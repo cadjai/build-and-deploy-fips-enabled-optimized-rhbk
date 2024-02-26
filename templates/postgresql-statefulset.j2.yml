@@ -1,0 +1,130 @@
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: {{ rhbk_db_secret_name | d('keycloak-db-secret', true) }}
+  namespace: {{ rhbk_ns | d('sso-rhbk', true) }}
+data:
+  POSTGRES_DATABASE: {{ rhbk_db_name | d('keycloakdb', true) | b64encode }}
+  POSTGRES_EXTERNAL_ADDRESS: {{ rhbk_db_svc_name | d('postgres-db', true) | b64encode }}
+  POSTGRES_EXTERNAL_PORT: {{ rhbk_db_port | d('5432', true) | b64encode }}
+  POSTGRES_PASSWORD: {{ rhbk_db_password | d('keycloakdb', true) | b64encode }}
+  POSTGRES_USERNAME: {{ rhbk_db_username | d('keycloak', true) | b64encode }}
+type: Opaque
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ rhbk_db_pvc_name | d('postgres-db', true) }}
+  namespace: {{ rhbk_ns | d('sso-rhbk', true) }}
+  labels:
+    app: sso
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ rhbk_db_pvc_size | d('1Gi', true) }}
+  storageClassName: {{ rhbk_db_sc | d('gp3-csi', true) }}
+  volumeMode: Filesystem
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ rhbk_db_svc_name | d('postgres-db', true) }}
+  namespace: {{ rhbk_ns | d('sso-rhbk', true) }}
+spec:
+  ipFamilies:
+    - IPv4
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+  internalTrafficPolicy: Cluster
+  type: ClusterIP
+  ipFamilyPolicy: SingleStack
+  sessionAffinity: None
+  selector:
+    app: postgresql-db
+status:
+  loadBalancer: {}
+---
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: postgresql-db
+  namespace: {{ rhbk_ns | d('sso-rhbk', true) }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgresql-db
+  template:
+    metadata:
+      labels:
+        app: postgresql-db
+    spec:
+      volumes:
+        - name: postgres-db-data
+          persistentVolumeClaim:
+            claimName: {{ rhbk_db_pvc_name | d('postgres-db', true) }}
+      containers:
+        - name: postgresql-db
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            seccompProfile:
+              type: "RuntimeDefault"
+            capabilities:
+              drop: ["ALL"]
+
+          image: >-
+             {{ rhbk_image | d('registry.redhat.io/rhel8/postgresql-15', true) }}:{{ rhbk_image_tag | d('1-44', true) }}
+          env:
+            - name: POSTGRESQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ rhbk_db_secret_name | d('keycloak-db-secret', true) }}
+                  key: POSTGRES_USERNAME
+            - name: POSTGRESQL_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ rhbk_db_secret_name | d('keycloak-db-secret', true) }}
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ rhbk_db_secret_name | d('keycloak-db-secret', true) }}
+                  key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /data/pgdata
+            - name: POSTGRESQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ rhbk_db_secret_name | d('keycloak-db-secret', true) }}
+                  key: POSTGRES_DATABASE
+          resources:
+            limits:
+              cpu: {{ rhbk_db_pod_cpu_limit | d('2', true) }}
+              memory: {{ rhbk_db_pod_mem_limit | d('4Gi', true) }}
+            requests:
+              cpu: {{ rhbk_db_pod_cpu_request | d('2', true) }}
+              memory: {{ rhbk_db_pod_cpu_request | d('4Gi', true) }}
+          volumeMounts:
+            - name: postgres-db-data
+              mountPath: /data
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: Always
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      schedulerName: default-scheduler
+  serviceName: {{ rhbk_db_svc_name | d('postgres-db', true) }}
+  podManagementPolicy: OrderedReady
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 0
+  revisionHistoryLimit: 10
