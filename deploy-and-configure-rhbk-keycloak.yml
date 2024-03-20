@@ -441,6 +441,7 @@
                  {{ podman_binary.stdout }} run -d --rm --name genks --entrypoint /entrypoint.sh \
                   -e DESTSTOREPASS={{ bcts_password }} \
                   -e DESTSTOREFILE={{ (bcts_file | basename).split('.')[0] }} \
+                  -e CAALIAS={{ ca_alias | d('dodca',true) }} \
                   -e CACHAINCERTFILE={{ (rhbk_ca_cert_file | basename) }} \
                   -v /tmp/bcfks-truststore/create-bcfks-ts-entrypoint.sh:/entrypoint.sh \ 
                   -v /tmp/bcfks-truststore:/certs:Z \

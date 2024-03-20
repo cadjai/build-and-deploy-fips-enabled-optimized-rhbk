@@ -56,3 +56,4 @@ generate_truststore: 'true' ## if we are generating the BCFKS truststore from sc
 generate_keystore: 'true' ## if we are generating the BCFKS keystore from scratch
 convert_jks: 'false' ## if we are converting a JKS keystore/truststore  to a BCFKS keystore/truststore
 realm_name: '' ## name of the realm being imported
+ca_alias: 'cachain'
