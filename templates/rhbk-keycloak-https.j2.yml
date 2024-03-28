@@ -1,0 +1,44 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ rhbk_https_service_name | d('rhsso-https', true) }}
+  namespace: {{ rhbk_ns | d('sso-rhbk', true) }}
+  labels:
+    app: keycloak
+    app.kubernetes.io/instance: rhsso
+spec:
+  ports:
+    - name: https
+      protocol: TCP
+      port: 8443
+      targetPort: 8443
+  internalTrafficPolicy: Cluster
+  type: ClusterIP
+  ipFamilyPolicy: SingleStack
+  sessionAffinity: None
+  selector:
+    app: keycloak
+    app.kubernetes.io/instance: rhsso
+    app.kubernetes.io/managed-by: keycloak-operator
+---
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: {{ rhbk_https_route_name | d('rhsso-https-ingress', true) }}
+  namespace:  {{ rhbk_ns | d('sso-rhbk', true) }}
+  labels:
+    app: keycloak
+    app.kubernetes.io/instance: rhsso
+    app.kubernetes.io/managed-by: keycloak-operator
+spec:
+  to:
+    kind: Service
+    name:  {{ rhbk_https_service_name | d('rhsso-https', true) }} 
+    weight: 100
+  port:
+    targetPort: https
+  tls:
+    termination: passthrough
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

@@ -9,7 +9,7 @@ spec:
   instances: {{ rhbk_instance_count | d('3', true) }}
   image: {{ rhbk_image | d('localhost/openshift4/rhbk/fips-rhbk-keycloak-rhel9', true) }}:{{ rhbk_image_tag | d('latest', true) }}
   ingress:
-    enabled: true
+    enabled: {{ rhbk_disable_default_route | default('true', true) }} 
     className: openshift-default
   db:
     vendor: postgres

@@ -601,6 +601,53 @@
             - cluster_console_out.stdout is defined
             - cluster_console_out.stdout != '' 
 
+        - name: '{{ ansible_name_module }} | Create passthrough https route and service'
+          when:
+            - use_passthrough_https_route is defined
+            - use_passthrough_https_route | bool
+          block:
+            - name: '{{ ansible_name_module }} | ansible.builtin.template| Render https service and passthrugh route manifests'
+              ansible.builtin.template:
+                src: "templates/rhbk-keycloak-https.j2.yml"
+                dest: "{{ staging_dir | d('/tmp', true) }}/rhbk-keycloak-https.yml"
+                force: yes
+              register: rhbk_https_route_manifest_copied
+
+            - name: '{{ ansible_name_module }} | ansible.builtin.command:{{ openshift_cli }} apply | deploy RHBK SSO instance'
+              ansible.builtin.command: >
+                {{ openshift_cli }} apply -f {{ staging_dir | d('/tmp', true) }}/rhbk-keycloak-https.yml
+              register: rhbk_https_route_manifest_applied
+
+            - name: '{{ ansible_name_module }} | ansible.builtin.command:{{ openshift_cli }} get | get https route for RHBK SSO instance'
+              ansible.builtin.command: >
+                {{ openshift_cli }} get route {{ rhbk_https_route_name | d('rhsso-https-ingress', true) }} -o jsonpath='{.spec.host}{"\n"}'
+              ignore_errors: true
+              register: rhbk_https_route_retrieved
+
+            - name: '{{ ansible_name_module }} | set_fact | RHBK hostname '
+              ansible.builtin.set_fact:
+                rhbk_hostname: "{{ rhbk_https_route_retrieved.stdout }}"
+              when:
+                - not rhbk_hostname is defined or rhbk_hostname == ''
+                - route_base_domain is defined and route_base_domain != ''
+                - rhbk_https_route_retrieved is defined
+                - rhbk_https_route_retrieved.stdout is defined
+                - rhbk_https_route_retrieved.stdout != ''
+
+            - name: '{{ ansible_name_module }} | set_fact | RHBK Admin URL '
+              ansible.builtin.set_fact:
+                rhbk_admin_url: "https://{{ rhbk_https_route_retrieved.stdout }}"
+              when:
+                - not rhbk_admin_url is defined or rhbk_admin_url == ''
+                - route_base_domain is defined and route_base_domain != ''
+                - rhbk_https_route_retrieved is defined
+                - rhbk_https_route_retrieved.stdout is defined
+                - rhbk_https_route_retrieved.stdout != ''
+
+            - name: '{{ ansible_name_module }} | set_fact | RHBK Admin URL '
+              ansible.builtin.set_fact:
+                rhbk_disable_default_route: "true"
+
         - name: '{{ ansible_name_module }} | set_fact | RHBK hostname '
           ansible.builtin.set_fact:
             rhbk_hostname: "sso-{{ rhbk_ns }}{{ route_base_domain }}"
