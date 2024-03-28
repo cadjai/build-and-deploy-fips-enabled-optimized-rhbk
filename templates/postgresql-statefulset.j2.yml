@@ -97,7 +97,7 @@ spec:
                   name: {{ rhbk_db_secret_name | d('keycloak-db-secret', true) }}
                   key: POSTGRES_PASSWORD
             - name: PGDATA
-              value: /data/pgdata
+              value: /var/lib/pgsql/data
             - name: POSTGRESQL_DATABASE
               valueFrom:
                 secretKeyRef:
@@ -112,7 +112,7 @@ spec:
               memory: {{ rhbk_db_pod_cpu_request | d('4Gi', true) }}
           volumeMounts:
             - name: postgres-db-data
-              mountPath: /data
+              mountPath: /var/lib/pgsql/data 
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
           imagePullPolicy: Always
