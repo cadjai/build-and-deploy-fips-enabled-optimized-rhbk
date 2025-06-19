@@ -1,5 +1,6 @@
 ---
 ### Image build optional variables
+rhbk_image_build_base_image_name: 'registry.redhat.io/rhbk/keycloak-rhel9:26.2-4'
 registry_host_fqdn: 'localhost'
 local_repository: 'openshift4'
 rhbk_image_name: 'fips-rhbk-keycloak-rhel9'
@@ -21,20 +22,26 @@ download_extensions: true
 extensions:
   bc-fips:
     url: 'https://downloads.bouncycastle.org/fips-java/'
-    pkg_version: '1.0.2.3'
+    pkg_version: '2.0.0'
     pkg_name: 'bc-fips'
     pkg_suffix: '.jar'
     pkg_extention: '.jar'
   bcpkix-fips:
     url: 'https://downloads.bouncycastle.org/fips-java/'
-    pkg_version: '1.0.7'
+    pkg_version: '2.0.7'
     pkg_name: 'bcpkix-fips'
     pkg_suffix: '.jar'
     pkg_extention: '.jar'
   bctls-fips:
     url: 'https://downloads.bouncycastle.org/fips-java/'
-    pkg_version: '1.0.16'
+    pkg_version: '2.0.19'
     pkg_name: 'bctls-fips'
+    pkg_suffix: '.jar'
+    pkg_extention: '.jar'
+  bcutils-fips:
+    url: 'https://downloads.bouncycastle.org/fips-java/'
+    pkg_version: '2.0.3'
+    pkg_name: 'bcutils-fips'
     pkg_suffix: '.jar'
     pkg_extention: '.jar'
   #bcmail-fips:

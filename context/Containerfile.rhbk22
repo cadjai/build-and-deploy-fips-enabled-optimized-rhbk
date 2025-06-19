@@ -1,5 +1,5 @@
 
-ARG BASE_IMAGE="registry.redhat.io/rhbk/keycloak-rhel9:26.2-4"
+ARG BASE_IMAGE="registry.redhat.io/rhbk/keycloak-rhel9:22-7"
 ARG SUMMARY="Custom RHBK Container with custom themes and FIPS libraries"
 ARG NAME="Optimized RHBK Container Image"
 ARG MAINTAINER="The Platform team <platformteam@test.org>"
@@ -14,7 +14,7 @@ ENV KC_HEALTH_ENABLED=true
 ENV KC_METRICS_ENABLED=true
 
 # Enable scripts features
-ENV KC_FEATURES=scripts,kerberos,fips,docker,authorization,client-secret-rotation,impersonation,token-exchange,web-authn,account-api,account2,account3,admin-api,admin2,dynamic-scopes
+ENV KC_FEATURES=scripts,kerberos,fips,docker,authorization,client-secret-rotation,impersonation,token-exchange,web-authn
 
 # Configure a database vendor
 ENV KC_DB=postgres
@@ -31,7 +31,7 @@ ENV KC_FIPS_MODE=strict
 
 # Add custom java security file to override default  
 COPY _build/kcadm.java.security /tmp/kcadm.java.security
-COPY _build/java.security /usr/lib/jvm/jre-21-openjdk/conf/security/java.security 
+COPY _build/java.security /usr/lib/jvm/jre-17-openjdk/conf/security/java.security 
 
 # Add Bouncy Castle 
 ADD --chown=keycloak:keycloak _build/extensions/*.jar /tmp/files/
@@ -47,11 +47,11 @@ ENV KC_DB=postgres
 RUN cp /tmp/files/*.jar /opt/keycloak/providers/
 
 # copy libraries to jre dir
-#RUN cp /tmp/files/*.jar /usr/lib/jvm/jre-21-openjdk/lib/
+RUN cp /tmp/files/*.jar /usr/lib/jvm/jre-17-openjdk/lib/
 
 RUN fips-mode-setup --enable
 
-RUN /opt/keycloak/bin/kc.sh build  --features=fips,docker,authorization,client-secret-rotation,impersonation,token-exchange,web-authn,scripts,kerberos,account-api,admin-api,admin,fips,dynamic-scopes --fips-mode=strict
+RUN /opt/keycloak/bin/kc.sh build  --features=fips,docker,authorization,client-secret-rotation,impersonation,token-exchange,web-authn --fips-mode=strict
 
 
 FROM $BASE_IMAGE 
@@ -68,11 +68,11 @@ LABEL summary="$SUMMARY" \
       io.k8s.display-name="$NAME" \
       name="$NAME" \
       version="1" \
-      usage="podman run -it --rm --name my-rhbk-optimized-test localhost/rhbk-keycloak-rhel9 bash " \
+      usage="podman run -it --rm --name my-rhbk-optimized-test localhost/fips-rhbk-keycloak-rhel9 bash " \
       maintainer="$MAINTAINER"
 
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
-COPY --from=builder /usr/lib/jvm/jre-21-openjdk/conf/security/java.security /usr/lib/jvm/jre-21-openjdk/conf/security/java.security
+COPY --from=builder /usr/lib/jvm/jre-17-openjdk/conf/security/java.security /usr/lib/jvm/jre-17-openjdk/conf/security/java.security
 
 ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
 
