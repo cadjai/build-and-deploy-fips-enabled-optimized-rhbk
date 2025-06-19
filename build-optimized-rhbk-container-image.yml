@@ -56,7 +56,7 @@
 
     - name: '{{ ansible_name_module }} | Set RHBK Image name'
       set_fact:
-        rhbk_image_name: "fips-keycloak-rhel9"
+        rhbk_image_name: "dpaas-keycloak-rhel9"
       when:
         - not rhbk_image_name is defined or rhbk_image_name == ''
 
@@ -78,9 +78,13 @@
       when:
         - not rhbk_image_build_context_dir is defined or rhbk_image_build_context_dir == ''
 
+    - name: Print image name
+      debug:
+        var: rhbk_image_build_base_image_name 
+
     - name: '{{ ansible_name_module }} | Set RHBK Image Build base image arg'
       set_fact:
-        rhbk_image_build_arg_base_image: "{{ ('--build-arg BASE_IMAGE=' + rhbk_image_build_arg_base_image_name + ' ') if rhbk_image_build_arg_base_image_name is defined and rhbk_image_build_arg_base_image_name != '' else '' }}"
+        rhbk_image_build_arg_base_image: "{{ ('--build-arg BASE_IMAGE=' + rhbk_image_build_base_image_name + ' ') if rhbk_image_build_base_image_name is defined and rhbk_image_build_base_image_name != '' else '' }}"
 
     - name: '{{ ansible_name_module }} | Set RHBK Image Build base image label summary arg'
       set_fact:
@@ -96,7 +100,7 @@
 
     - name: '{{ ansible_name_module }} | Set RHBK Image Build base image build arg'
       set_fact:
-        rhbk_image_build_arg: "{{ rhbk_image_build_arg_base_image +  rhbk_image_build_arg_image_label_summary + rhbk_image_build_arg_image_label_name  + rhbk_image_build_arg_image_label_maintainer }}"
+        rhbk_image_build_arg: "{{ rhbk_image_build_arg_base_image + rhbk_image_build_arg_image_label_summary + rhbk_image_build_arg_image_label_name + rhbk_image_build_arg_image_label_maintainer }}"
 
     - name: '{{ ansible_name_module }} | Set RHBK Image Build base image diable layer caching arg'
       set_fact:
@@ -108,7 +112,7 @@
 
     - name: '{{ ansible_name_module }} | build RHBK container Image'
       shell: >
-        podman build {{ rhbk_image_build_arg_nocache }} {{ rhbk_image_build_arg_layersquash }}         -f {{ rhbk_image_containerfile }} -t {{ registry_host_fqdn }}/{{ local_repository }}/rhbk/{{ rhbk_image_name }}:latest-{{ today_date }} {{ rhbk_image_build_arg }} {{ rhbk_image_build_context_dir }}
+        podman build {{ rhbk_image_build_arg_nocache }} {{ rhbk_image_build_arg_layersquash }} -f {{ rhbk_image_containerfile }} -t {{ registry_host_fqdn }}/{{ local_repository }}/rhbk/{{ rhbk_image_name }}:latest-{{ today_date }} {{ rhbk_image_build_arg }} {{ rhbk_image_build_context_dir }}
       register: rhbk_container_built
 
     - name: '{{ ansible_name_module }} | tag RHBK container Image'
@@ -126,7 +130,7 @@
 
     - name: '{{ ansible_name_module }} | podman:save | save DPAAS RHBK image'
       shell: >
-        podman save -o {{ dir_bundle_location }}/{{ rhbk_image_name }}-fips-latest-image-{{ today_date }}.tar \
+        podman save -o {{ dir_bundle_location }}/{{ rhbk_image_name }}-dpaas-latest-image-{{ today_date }}.tar \
           {{ registry_host_fqdn }}/{{ local_repository }}/rhbk/{{ rhbk_image_name }}:latest-{{ today_date }} 
       register: rhbk_container_saved
 
@@ -146,13 +150,11 @@
       loop:
         - "{{ registry_host_fqdn }}/{{ local_repository }}/rhbk/{{ rhbk_ks_image_name }}:latest-{{ today_date }}"
         - "{{ registry_host_fqdn }}/{{ local_repository }}/rhbk/{{ rhbk_ks_image_name }}:latest"
-      when:
-        - push_image_to_registry is defined
-        - push_image_to_registry | bool 
       register: rhbk_container_pushed
 
     - name: '{{ ansible_name_module }} | podman:save | save DPAAS RHBK  BCFKS keystore conversion  image'
       shell: >
-        podman save -o {{ dir_bundle_location }}/{{ rhbk_ks_image_name }}-fips-latest-image-{{ today_date }}.tar \
+        podman save -o {{ dir_bundle_location }}/{{ rhbk_ks_image_name }}-dpaas-latest-image-{{ today_date }}.tar \
           {{ registry_host_fqdn }}/{{ local_repository }}/rhbk/{{ rhbk_ks_image_name }}:latest-{{ today_date }} 
       register: rhbk_ks_container_saved
+
