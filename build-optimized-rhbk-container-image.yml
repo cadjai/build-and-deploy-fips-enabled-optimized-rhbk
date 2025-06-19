@@ -56,7 +56,7 @@
 
     - name: '{{ ansible_name_module }} | Set RHBK Image name'
       set_fact:
-        rhbk_image_name: "keycloak-rhel9"
+        rhbk_image_name: "fips-keycloak-rhel9"
       when:
         - not rhbk_image_name is defined or rhbk_image_name == ''
 
@@ -130,7 +130,7 @@
 
     - name: '{{ ansible_name_module }} | podman:save | save DPAAS RHBK image'
       shell: >
-        podman save -o {{ dir_bundle_location }}/{{ rhbk_image_name }}-latest-image-{{ today_date }}.tar \
+        podman save -o {{ dir_bundle_location }}/{{ rhbk_image_name }}-fips-latest-image-{{ today_date }}.tar \
           {{ registry_host_fqdn }}/{{ local_repository }}/rhbk/{{ rhbk_image_name }}:latest-{{ today_date }} 
       register: rhbk_container_saved
 
@@ -154,7 +154,7 @@
 
     - name: '{{ ansible_name_module }} | podman:save | save DPAAS RHBK  BCFKS keystore conversion  image'
       shell: >
-        podman save -o {{ dir_bundle_location }}/{{ rhbk_ks_image_name }}-latest-image-{{ today_date }}.tar \
+        podman save -o {{ dir_bundle_location }}/{{ rhbk_ks_image_name }}-fips-latest-image-{{ today_date }}.tar \
           {{ registry_host_fqdn }}/{{ local_repository }}/rhbk/{{ rhbk_ks_image_name }}:latest-{{ today_date }} 
       register: rhbk_ks_container_saved
 
