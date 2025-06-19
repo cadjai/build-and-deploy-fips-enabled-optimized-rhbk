@@ -68,7 +68,7 @@ LABEL summary="$SUMMARY" \
       io.k8s.display-name="$NAME" \
       name="$NAME" \
       version="1" \
-      usage="podman run -it --rm --name my-rhbk-optimized-test localhost/dpaas-rhbk-keycloak-rhel9 bash " \
+      usage="podman run -it --rm --name my-rhbk-optimized-test localhost/rhbk-keycloak-rhel9 bash " \
       maintainer="$MAINTAINER"
 
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
