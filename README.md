@@ -25,19 +25,23 @@ The reason for the first focus (optimized container build) is to show how one ca
 
 The reason for the second focus (deployment of the keycloak instance) is to make it easy to generate the necessary CR along with any needed kubernetes artifacts as well as anything required to make FIPS compliance. 
 
-Therefore this role contains two playbooks focus on each of the main tasks: building an optimized container image and deploying the resulting keycloak instance. 
+Therefore this role contains two playbooks focused on each of the main tasks: building an optimized container image and deploying the resulting keycloak instance. 
 
 ### RHBK Optimized FIPS image build
 The playbook (build-optimized-rhbk-container-image.yml) and associated files allow us to build a new version of the RHBK image when a new version of the base image is available from Red Hat or whenever an update is needed (e.g. new package is required, new binaries need to be included ...). 
 
 This playbook is used to build, tag and push two container images into the target registry. The first image is the optimized RHBK image that will be ready to support strict mode FIPS but also any additional extensions if applicable. The second image is a helper image to help create BCFKS formatted keystore and trustore from scratch using pem certificate, key and intermediate CA certificate or convert an existing JKS keystore/truststore into a BCFKS keystore/truststore. 
-Note that nothing else is required for the two images to be created and pushed to the target registry except when necessary to change the base image used.  
+Note that nothing else is required for the two images to be created and pushed to the target registry except when necessary to change the base image used and if applicable adjust some of the provided key files. 
 
-Before running this playbook you will need the extensions either already staged or you will need to set the download_extensions boolean to true to have the playbook download the extensions for you. 
+Before running this playbook you will need the extensions either already staged or you will need to set the download_extensions boolean to true and ensure the versions of the necessary file are up to date to have the playbook download the extensions for you. 
 
 This playbook can only be run on an Internet connected bastion/jumphost host with access to the location where the extensions are hosted. If not please ensure you can download the existing extensions from the binary repository (e.g. artifactory) and stage them appropriately (the extension binaries are expected under context/_build/extensions directory). 
 
-Once the extensions have been staged or you have updated the rhbkbuild.yml variable file to ensure that the extensions will be downloaded, you need to make sure that you also update any necessary artifacts. For example if additional changes are required to the java.security file included under the context/_build directory to reflect your intent.
+Once the extensions have been staged or you have updated the rhbkbuild.yml variable file to ensure that the extensions will be downloaded, you need to make sure that you also update any necessary artifacts. 
+For example if additional changes are required to the java.security file included under the context/_build directory to reflect your intent.
+For instance for RHBK 22 the JDK used was OpenJDK 17 and therefore the provided java.security for that branch is the same one found under the openjdk17 directory structure with the necessary configuration to make it support FIPS. 
+Similarly RHBK 26 uses OpenJDK 21 and therefore the java.security file has to match the one located under the openjdk 21 directory tree with the necessary modification to support FIPS. 
+If you are rebuilding for a newer version you need to ensure that you are rebaselining the java.security file. The easiest way to get a copy of that file for the new RHBK base image is to run the container image using `podman run` and then use `podman cp` to export/extract the file from the running container onto the host and then make the necessary adjustment to make it support FIPS. Use the provided file as a guide to figure out what needs to be update in the exported file. 
  
 Once all of that is done, run the playbook as follows: 
 
@@ -66,30 +70,35 @@ Note that before running any playbook always make sure you properly set the appr
 ### RHBK Realm Import
 **Realm Export**
 Requirements for Realm Import
-Realm export by default will do a partial export (i.e. excludes groups and roles and existing clients)(see two sample screenshoots below depending on your version of keycloak).
+Realm export by default will do a partial export (i.e. excludes groups and roles and existing clients)(see the two sample screenshoots below depending on your version of keycloak).
 ![](images/rhbk-export-partial.png)
 ![](images/keycloak-export-partial.png)
 
-If you need to export groups and roles as well as existing clients, make sure to click on the two buttons (Export groups and roles and Export clients) on the Partial Export page (two sample screenshoots below depending on your version of keycloak)
+If you need to export groups and roles as well as existing clients, make sure to click on the two buttons (Export groups and roles and Export clients) on the Partial Export page (refer to the two sample screenshoots below depending on your version of keycloak)
 
 ![](images/rhbk-export-full.png)
 ![](images/keycloak-export-full.png)
 
 We will refer to this export as a full export in the instructions below.
 
-During the RHBK creation there is an option to provide a raw realm export file so that the newly provisioned RHBK will have the realm imported. In order for this to work there a a few steps required to cleanup the full export file to make it ready for import.
+During the RHBK creation there is an option to provide a raw realm export file so that the newly provisioned RHBK will have the realm imported. In order for this to work there are a few steps required to cleanup the full export file to make it ready for import.
+
 Note that these steps are not requried if you performed a default partial export.
-1. Locate the secret code for each exported client and replace it with its equivalent secret value from the original keycloak from which the export was conducted. You can located this on the client configuration page on the admin console. The value you are replacing are the `**********`. Also note that if you have user federation and have bind credentials set you will need to also decode the value in the update json file to be able to connect to the backend identity provider.
+
+1. Locate the secret code for each exported client and replace it with its equivalent secret value from the original keycloak from which the export was conducted. You can located this on the client configuration page on the admin console. 
+   The value you are replacing are the `**********`. 
+   Also note that if you have user federation and have bind credentials set, you will need to also decode the value in the updated json file to be able to connect to the backend identity provider.
 2.  Locate the `authorizationSettings` nodes defined for each client and remove the entire node from the file. This structure is usually located under the optionalClientScopes node within the file.
-3.  Save the modified json file and use that as the value for the sso_relamimport_json variable when deploying the keycloak RHBK instance.
+3.  Save the modified json file and use that as the value for the `sso_relamimport_json` variable when deploying the keycloak RHBK instance.
 
 
 
 Requirements
 ------------
-A running OpenShift 4 cluster with the rhbk-operator already deployed and with valid credentials provided through the variables described below.
+A running OpenShift 4 cluster with the rhbk-operator (with a version corresponding to the version of the RHBK image used for the opetimized RHBK image build above) already deployed and with valid credentials provided through the variables described below.
 A running target registry with valid credentials provided through the variables described below.
-An optional RHEL 8 Internet connected bastion host with access to the location where the extensions are hosted and access to Red Hat registry if the extensions and images are to be downloaded. If there is no need to download the image or Bouncy Castle java libraries (it is assumed that these are already available on the host or can be pulled down from the target registry) then the controller does not need to be Internet Connnected. Finally the controller is expected to have few packages installed on it like podman, skopeo, jq...It is also expected to be FIPS enabled so that the built optimized image can inherit FIPS from the host it is built on. 
+An optional RHEL 8 (or higher) Internet connected bastion host with access to the location where the extensions are hosted and access to Red Hat registry if the extensions and images are to be downloaded. If there is no need to download the image or Bouncy Castle java libraries (it is assumed that these are already available on the host or can be pulled down from the target registry) then the controller does not need to be Internet Connnected. 
+Finally the controller is expected to have a few packages installed on it like podman, skopeo, jq...It is also expected to be FIPS enabled so that the built optimized image can inherit FIPS from the host it is built on. 
 
 Dependencies
 ------------
