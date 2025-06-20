@@ -86,6 +86,18 @@ spec:
   features:
     enabled:
       - multi-site
+{% if apply_network_policy is defined and apply_network_policy | bool %}
+  networkPolicy:
+    enabled: true
+    https:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: openshift-ingress
+    management:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: openshift-user-workload-monitoring
+{% endif %}
   transaction:
     xaEnabled: false
 {% if apply_realm_import is defined and apply_realm_import | bool and sso_relamimport_json is defined and sso_relamimport_json != '' and apply_import_on_start is defined and apply_import_on_start | bool %}
